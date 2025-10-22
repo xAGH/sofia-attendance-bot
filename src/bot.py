@@ -1,5 +1,8 @@
+from time import sleep
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select, WebDriverWait
 
@@ -56,20 +59,13 @@ class SofiaAttendanceBot:
         )
         register_absences.click()
 
-    def select_group(self, group_code: str):
-        group_selector = self.wait_until_clickable(
-            By.ID, "formNovedadAprendiz:fichaOLK"
-        )
-        group_selector.click()
-        gorup_selector_iframe = self.wait_until_located(By.ID, "viewDialog2_content")
-        self.driver.switch_to.frame(gorup_selector_iframe)
-        groups_table = self.wait_until_located(By.ID, "form2:dtListas")
-        rows = groups_table.find_elements(By.XPATH, ".//tr")
+    def find_element_in_table(self, criteria: str, table: WebDriver):
+        rows = table.find_elements(By.XPATH, ".//tr")
 
         for row in rows:
             try:
                 second_column = row.find_element(By.XPATH, ".//td[2]")
-                if group_code.strip() not in second_column.text.strip():
+                if criteria.strip() not in second_column.text.strip():
                     continue
                 selector = row.find_element(By.XPATH, ".//td[1]//a")
                 selector.click()
@@ -78,15 +74,71 @@ class SofiaAttendanceBot:
                 print(f"Error consultando filas de las fichas {e}")
                 continue
 
+    def select_group(self, group_code: str):
+        group_selector = self.wait_until_clickable(
+            By.ID, "formNovedadAprendiz:fichaOLK"
+        )
+        group_selector.click()
+        iframe = self.wait_until_located(By.ID, "viewDialog2_content")
+        self.driver.switch_to.frame(iframe)
+        groups_table = self.wait_until_located(By.ID, "form2:dtListas")
+        self.find_element_in_table(group_code, groups_table)
+
     def select_student(self, name: str):
-        pass
+        student_selector = self.wait_until_clickable(
+            By.ID, "formNovedadAprendiz:aprendizOLK"
+        )
+        student_selector.click()
+        iframe = self.wait_until_located(By.ID, "viewDialog1_content")
+        self.driver.switch_to.frame(iframe)
+        students_table = self.wait_until_located(By.ID, "form2:dtListas")
+        self.find_element_in_table(name, students_table)
+
+    def set_hours(self, hours: int):
+        hours_input = self.wait_until_located(By.ID, "formNovedadAprendiz:horasITX")
+        hours_input.send_keys(hours)
+
+    def set_justification(self, hours: int, justification: str):
+        without_excuse = " NO PRESENTA EXCUSA VÁLIDA"
+
+        if not justification:
+            justification = "LLEGA TARDE." if hours < 3 else "NO ASISTE."
+            justification += without_excuse
+
+        justification_input = self.wait_until_located(
+            By.ID, "formNovedadAprendiz:justificacionITA"
+        )
+        justification_input.send_keys(justification)
+
+    def set_date(self, date: str):
+        start_date_input = self.wait_until_located(
+            By.ID, "formNovedadAprendiz:fechaEjecucion"
+        )
+        start_date_input.send_keys(date)
+        end_date_input = self.wait_until_located(By.ID, "formNovedadAprendiz:fechaFin")
+        end_date_input.send_keys(date)
 
     def register_absence(self, record: Absence):
-        main_iframe = self.wait_until_located(By.ID, "contenido")
-        self.driver.switch_to.frame(main_iframe)
-        self.select_group(record.get("group_code"))
-
         print(f"Registrando inasistencia: {record['full_name']} - {record['date']}")
+        iframe = self.wait_until_located(By.ID, "contenido")
+        self.driver.switch_to.frame(iframe)
+
+        # Select group
+        self.select_group(record.get("group_code"))
+        self.driver.switch_to.frame(iframe)
+
+        # Select student
+        self.select_student(record.get("name"))
+        self.driver.switch_to.frame(iframe)
+
+        # Set hours
+        self.set_hours(int(record.get("hours")))
+
+        # Set justification
+        self.set_justification(record.get("justification"))
+
+        # Set date
+        self.set_date(record.get("date"))
 
     def close(self):
         self.driver.quit()

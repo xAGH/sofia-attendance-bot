@@ -5,5 +5,5 @@ class Absence(TypedDict):
     group_code: str
     name: str
     hours: str
-    reason: str
+    justification: str
     date: str
