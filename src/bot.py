@@ -1,11 +1,9 @@
-import time
-from typing import Tuple
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select, WebDriverWait
+
+from custom_types.absence import Absence
 
 
 class SofiaAttendanceBot:
@@ -45,11 +43,9 @@ class SofiaAttendanceBot:
         role_select.select_by_value("13")
 
     def select_register_absences(self):
-        print("Entrando a la pantalla de registrar inasistencias...")
         time_management = self.wait_until_clickable(
             By.XPATH, '//*[@id="side-menu"]/li[4]/a'
         )
-        print(time_management)
         time_management.click()
         instructor_time_management = self.wait_until_clickable(
             By.XPATH, '//*[@id="side-menu"]/li[4]/ul/li/a'
@@ -60,7 +56,36 @@ class SofiaAttendanceBot:
         )
         register_absences.click()
 
-    def register_absence(self, record):
+    def select_group(self, group_code: str):
+        group_selector = self.wait_until_clickable(
+            By.ID, "formNovedadAprendiz:fichaOLK"
+        )
+        group_selector.click()
+        gorup_selector_iframe = self.wait_until_located(By.ID, "viewDialog2_content")
+        self.driver.switch_to.frame(gorup_selector_iframe)
+        groups_table = self.wait_until_located(By.ID, "form2:dtListas")
+        rows = groups_table.find_elements(By.XPATH, ".//tr")
+
+        for row in rows:
+            try:
+                second_column = row.find_element(By.XPATH, ".//td[2]")
+                if group_code.strip() not in second_column.text.strip():
+                    continue
+                selector = row.find_element(By.XPATH, ".//td[1]//a")
+                selector.click()
+                break
+            except Exception as e:
+                print(f"Error consultando filas de las fichas {e}")
+                continue
+
+    def select_student(self, name: str):
+        pass
+
+    def register_absence(self, record: Absence):
+        main_iframe = self.wait_until_located(By.ID, "contenido")
+        self.driver.switch_to.frame(main_iframe)
+        self.select_group(record.get("group_code"))
+
         print(f"Registrando inasistencia: {record['full_name']} - {record['date']}")
 
     def close(self):

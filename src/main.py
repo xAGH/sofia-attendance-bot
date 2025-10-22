@@ -1,17 +1,18 @@
 import time
+from typing import List
 
 from bot import SofiaAttendanceBot
 from config import Env
 from csv_reader import load_absences
+from custom_types.absence import Absence
 
 
 def main():
-    absences = load_absences(Env.ABSENCES_CSV_URL)
+    absences: List[Absence] = load_absences(Env.ABSENCES_CSV_URL)
     bot = SofiaAttendanceBot(Env.SENA_SOFIA_USERNAME, Env.SENA_SOFIA_PASSWORD)
     bot.login(Env.SENA_SOFIA_LOGIN_URL)
     bot.select_instructor_rol()
     bot.select_register_absences()
-    time.sleep(4)
 
     for record in absences:
         bot.register_absence(record)
