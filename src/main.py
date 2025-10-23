@@ -1,10 +1,11 @@
 import time
 from typing import List
 
-from bot import SofiaAttendanceBot
+from bot.selenium_bot import SofiaAttendanceBot
 from config import Env
+from core.exceptions import NotFound
 from csv_reader import load_absences
-from custom_types.absence import Absence
+from models.absence import Absence
 
 
 def main():
@@ -15,7 +16,11 @@ def main():
     bot.select_register_absences()
 
     for record in absences:
-        bot.register_absence(record)
+        try:
+            bot.register_absence(record)
+        except NotFound:
+            print("Fallo seguro")
+            exit()
 
     bot.close()
 
